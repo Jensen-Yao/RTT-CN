@@ -18,27 +18,29 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      # RTT is published as a static distribution repository. Keep this mirror
+      # workflow independent from the private Astro source tree.
+      - name: Checkout RTT distribution
+        uses: actions/checkout@v4
         with:
           repository: Jensen-Yao/RTT
           ref: main
           path: source
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: npm
-          cache-dependency-path: source/site/package-lock.json
-      - working-directory: source/site
-        run: npm ci
-      - working-directory: source/site
-        env:
-          RTT_SITE_URL: https://rtt.jenseny.cn
-          RTT_SITE_BASE: /
-        run: node scripts/build-site.mjs custom-domain
+
+      - name: Stage static website
+        run: |
+          set -euo pipefail
+          rm -rf dist
+          mkdir -p dist
+          rsync -a --delete --exclude='.git' --exclude='.github' source/ dist/
+          test -f dist/index.html
+          test -f dist/CNAME
+          test -f dist/sitemap.xml
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: source/site/dist
+          path: dist
 
   deploy:
     environment:
